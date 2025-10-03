@@ -82,6 +82,7 @@
     ];
 
     let idx = 0, score = 0, selected = null;
+    let userAnswers = [];
     const quizArea = document.getElementById('quiz-area');
     const prog = document.getElementById('prog');
     const qcount = document.getElementById('qcount');
@@ -95,7 +96,7 @@
       restartBtn.setAttribute('aria-hidden','true');
       const data = questions[idx];
       qcount.textContent = `Question ${idx+1} of ${questions.length}`;
-      prog.style.width = `${Math.round(((idx)/questions.length)*100)}%`;
+      prog.style.width = `${Math.round((idx/questions.length)*100)}%`;
 
       quizArea.innerHTML = `
         <div>
@@ -113,6 +114,12 @@
           if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(parseInt(el.dataset.index), el); }
         });
       });
+
+      // restore previous answer if any
+      if (typeof userAnswers[idx] !== 'undefined' && userAnswers[idx] !== null) {
+        const prev = document.querySelector(`.option[data-index="${userAnswers[idx]}"]`);
+        if (prev) { prev.classList.add('selected'); prev.setAttribute('aria-pressed','true'); selected = userAnswers[idx]; }
+      }
 
       // Next button text
       nextBtn.textContent = idx === questions.length-1 ? 'Finish' : 'Next';
@@ -142,6 +149,9 @@
         if(i === selected && i !== correctIndex) o.style.border = `2px solid rgba(220,38,38,0.18)`;
       });
 
+      // save user's answer
+      userAnswers[idx] = selected;
+
       if(selected === correctIndex) score++;
       idx++;
 
@@ -155,7 +165,7 @@
     });
 
     restartBtn.addEventListener('click', ()=>{
-      idx = 0; score = 0; selected = null; renderQuestion(); updateProgress(); restartBtn.setAttribute('aria-hidden','true'); final.style.display='none';
+      idx = 0; score = 0; selected = null; userAnswers = []; renderQuestion(); updateProgress(); restartBtn.setAttribute('aria-hidden','true'); final.style.display='none';
     });
 
     function showFinal(){
@@ -164,11 +174,13 @@
       final.style.display = 'block';
       final.innerHTML = `<h3>Your score: ${score} / ${questions.length}</h3>`;
 
-      // detailed answers
+      // detailed answers with user's choice and correct answer
       const list = questions.map((q,i)=>{
-        const chosen = (i < idx) ? '<strong>' + (q.choices[(i===idx-1?selected:undefined)]) + '</strong>' : '';
-        const correct = q.choices[q.correct];
-        return `<div style="margin-top:10px"><div style="font-weight:600">Q${i+1}. ${escapeHtml(q.q)}</div><div>Answer: <span class="answer-correct">${escapeHtml(correct)}</span></div></div>`;
+        const userIdx = (typeof userAnswers[i] === 'number') ? userAnswers[i] : null;
+        const userText = userIdx !== null ? q.choices[userIdx] : 'No answer';
+        const correctText = q.choices[q.correct];
+        const isCorrect = userIdx === q.correct;
+        return `<div style="margin-top:10px"><div style="font-weight:600">Q${i+1}. ${escapeHtml(q.q)}</div><div>Your answer: <span class="${isCorrect ? 'answer-correct' : 'answer-wrong'}">${escapeHtml(userText)}</span></div><div>Correct answer: <span class="answer-correct">${escapeHtml(correctText)}</span></div></div>`;
       }).join('');
 
       final.innerHTML += `<div style="margin-top:12px">${list}</div>`;
@@ -183,7 +195,11 @@
       setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300)},1300);
     }
 
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>\"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+      });
+    }
 
     function updateProgress(){ prog.style.width = `${Math.round((idx/questions.length)*100)}%`; }
 
@@ -192,3 +208,4 @@
   </script>
 </body>
 </html>
+
